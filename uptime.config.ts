@@ -116,11 +116,11 @@ const workerConfig: WorkerConfig = {
     {
       id: 'OpenList',
       name: 'OpenList（lg）',
-      method: 'HEAD',
+      method: 'GET',
       target: 'https://lg.031312.xyz:5225/',
       statusPageLink: 'https://lg.031312.xyz:5225/',
       hideLatencyChart: false,
-      expectedCodes: [405],
+      expectedCodes: [200],
       timeout: 10000,
     },
     // {
@@ -171,7 +171,7 @@ const workerConfig: WorkerConfig = {
       statusPageLink: 'https://umami.031312.xyz/share/V4876OwqxIo2vSbe',
       hideLatencyChart: false,
       expectedCodes: [200],
-      timeout: 10000,
+      timeout: 15000,
     },
     // {
     //   id: 'upload_to_s3',
