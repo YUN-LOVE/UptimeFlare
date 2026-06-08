@@ -231,33 +231,33 @@ const workerConfig: WorkerConfig = {
   notification: {
     // [Optional] Notification webhook settings, if not specified, no notification will be sent
     // More info at Wiki: https://github.com/lyc8503/UptimeFlare/wiki/Setup-notification
-    webhook: {
-      // [Required] webhook URL (example: Telegram Bot API)
-      url: 'https://api.resend.com/emails',
-      // [Optional] HTTP method, default to 'GET' for payloadType=param, 'POST' otherwise
-      method: 'POST',
-      // [Optional] headers to be sent
-      headers: {
-         'Authorization': 'Bearer ${env.RESEND_API_KEY}',
-         'Content-Type': 'application/json'
-      },
-      // [Required] Specify how to encode the payload
-      // Should be one of 'param', 'json' or 'x-www-form-urlencoded'
-      // 'param': append url-encoded payload to URL search parameters
-      // 'json': POST json payload as body, set content-type header to 'application/json'
-      // 'x-www-form-urlencoded': POST url-encoded payload as body, set content-type header to 'x-www-form-urlencoded'
-      payloadType: 'json',
-      // [Required] payload to be sent
-      // $MSG will be replaced with the human-readable notification message
-      payload: {
-        "from": "系统状态更新 <uptimeflare@031312.xyz>",
-        "to": ["yun0313wwh12@gmail.com"],
-        "subject": "UptimeFlare 状态更新",
-        "text": "$MSG"
-      },
-      // [Optional] timeout calling this webhook, in millisecond, default to 5000
-      timeout: 10000,
-    },
+    // webhook: {
+    //   // [Required] webhook URL (example: Telegram Bot API)
+    //   url: 'https://api.resend.com/emails',
+    //   // [Optional] HTTP method, default to 'GET' for payloadType=param, 'POST' otherwise
+    //   method: 'POST',
+    //   // [Optional] headers to be sent
+    //   headers: {
+    //      'Authorization': 'Bearer ${env.RESEND_API_KEY}',
+    //      'Content-Type': 'application/json'
+    //   },
+    //   // [Required] Specify how to encode the payload
+    //   // Should be one of 'param', 'json' or 'x-www-form-urlencoded'
+    //   // 'param': append url-encoded payload to URL search parameters
+    //   // 'json': POST json payload as body, set content-type header to 'application/json'
+    //   // 'x-www-form-urlencoded': POST url-encoded payload as body, set content-type header to 'x-www-form-urlencoded'
+    //   payloadType: 'json',
+    //   // [Required] payload to be sent
+    //   // $MSG will be replaced with the human-readable notification message
+    //   payload: {
+    //     "from": "系统状态更新 <uptimeflare@031312.xyz>",
+    //     "to": ["yun0313wwh12@gmail.com"],
+    //     "subject": "UptimeFlare 状态更新",
+    //     "text": "$MSG"
+    //   },
+    //   // [Optional] timeout calling this webhook, in millisecond, default to 5000
+    //   timeout: 10000,
+    // },
     // [Optional] timezone used in notification messages, default to "Etc/GMT"
     timeZone: 'Asia/Shanghai',
     // [Optional] grace period in minutes before sending a notification
