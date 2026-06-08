@@ -29,17 +29,6 @@ function withTimeout<T>(millis: number, promise: Promise<T>): Promise<T> {
   return Promise.race([promise, timeout])
 }
 
-// 将字符串中的控制字符转义为 \uXXXX 格式，使其能安全放入 JSON 字符串
-function escapeControlChars(str: string): string {
-  return str.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, (char) => {
-    const code = char.charCodeAt(0);
-    const hex = code.toString(16).toUpperCase().padStart(4, '0');
-    return `\\u${hex}`;
-  }).replace(/\n/g, '\\n')
-    .replace(/\r/g, '\\r')
-    .replace(/\t/g, '\\t');
-}
-
 function formatStatusChangeNotification(
   monitor: any,
   isUp: boolean,
@@ -139,28 +128,10 @@ async function webhookNotify(env: any, webhook: WebhookConfig, message: string) 
         url = urlTmp.toString()
         break
       case 'json':
-        method = method ?? 'POST';
+        method = method ?? 'POST'
         if (headers.get('content-type') === null) {
-        headers.set('content-type', 'application/json');
+          headers.set('content-type', 'application/json')
         }
-        const escapedPayload = JSON.parse(JSON.stringify(payloadTemplated));
-        function escapeStrings(obj: any) {
-    if (typeof obj === 'string') {
-      return escapeControlChars(obj);
-    } else if (Array.isArray(obj)) {
-      return obj.map(escapeStrings);
-    } else if (obj && typeof obj === 'object') {
-      const newObj: any = {};
-      for (const key in obj) {
-        if (Object.prototype.hasOwnProperty.call(obj, key)) {
-          newObj[key] = escapeStrings(obj[key]);
-        }
-      }
-      return newObj;
-      }
-      return obj;
-      }
-        const finalPayload = escapeStrings(escapedPayload);
         body = JSON.stringify(payloadTemplated)
         break
       case 'x-www-form-urlencoded':
