@@ -239,19 +239,19 @@ const workerConfig: WorkerConfig = {
       // [Optional] headers to be sent
       headers: {
          // 'Authorization': 'Bearer ${env.RESEND_API_KEY}',
-         'Content-Type': 'application/json'
+         'Content-Type': 'application/x-www-form-urlencoded'
       },
       // [Required] Specify how to encode the payload
       // Should be one of 'param', 'json' or 'x-www-form-urlencoded'
       // 'param': append url-encoded payload to URL search parameters
       // 'json': POST json payload as body, set content-type header to 'application/json'
       // 'x-www-form-urlencoded': POST url-encoded payload as body, set content-type header to 'x-www-form-urlencoded'
-      payloadType: 'json',
+      payloadType: 'x-www-form-urlencoded',
       // [Required] payload to be sent
       // $MSG will be replaced with the human-readable notification message
       payload: {
         "from": "系统状态更新 <uptimeflare@031312.xyz>",
-        "to": ["yun0313wwh12@gmail.com"],
+        "to": "yun0313wwh12@gmail.com",
         "subject": "UptimeFlare 状态更新",
         "text": "$MSG"
       },
