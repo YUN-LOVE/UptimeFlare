@@ -266,34 +266,52 @@ const workerConfig: WorkerConfig = {
     //gracePeriod: 5,
   },
   callbacks: {
-    onStatusChange: async (
-      env: any,
-      monitor: any,
-      isUp: boolean,
-      timeIncidentStart: number,
-      timeNow: number,
-      reason: string
-    ) => {
-      // 当任何监控的状态发生变化时，将调用此回调
-      // 在这里编写任何 Typescript 代码
+  onStatusChange: async (
+    env: any,
+    monitor: any,
+    isUp: boolean,
+    timeIncidentStart: number,
+    timeNow: number,
+    reason: string
+  ) => {
+    // ========== 宽限期配置 ==========
+    const GRACE_PERIOD_MINUTES = 5;   // 5分钟内重复的 DOWN 不报警
+    // =================================
 
-      // 注意：已在 webhook 中配置了 Resend 基础通知
-      // 如果需要发送 HTML 邮件，请保留以下代码；如果只需简单文本通知，可以注释掉以下代码以避免重复通知。
-      
-      // 调用 Resend API 发送邮件通知 (高级 HTML 格式)
-      // 务必在 Cloudflare Worker 的设置 -> 变量中配置: RESEND_API_KEY
-       
-      if (env.RESEND_API_KEY) {
-        try {
+    if (env.RESEND_API_KEY) {
+      try {
+        // ---------- 宽限期检查（仅对 DOWN 状态生效）----------
+        let skipSend = false;
+        if (!isUp && env.ALERT_KV) {   // 只有 DOWN 并且 KV 可用时才检查
+          const kvKey = `alert_${monitor.name}`;
+          let lastRecord = null;
+          try {
+            const raw = await env.ALERT_KV.get(kvKey);
+            if (raw) lastRecord = JSON.parse(raw);
+          } catch (e) {
+            console.error(`KV read error: ${e}`);
+          }
+
+          const lastStatus = lastRecord?.status;
+          const lastTime = lastRecord?.time || 0;
+          const minutesSinceLast = (Date.now() - lastTime) / 1000 / 60;
+
+          if (lastStatus === "DOWN" && minutesSinceLast < GRACE_PERIOD_MINUTES) {
+            console.log(`[Skip] ${monitor.name} DOWN alert suppressed (${minutesSinceLast.toFixed(1)} min since last alert)`);
+            skipSend = true;
+          }
+        }
+        // ----------------------------------------------------
+
+        if (!skipSend) {
           const statusText = isUp ? '恢复正常 (UP)' : '服务中断 (DOWN)';
-          const color = isUp ? '#4ade80' : '#ef4444'; // green-400 : red-500
+          const color = isUp ? '#4ade80' : '#ef4444';
           const subject = `[${statusText}] ${monitor.name} 状态变更通知`;
-          
-          // 尝试格式化时间
+
           let timeString = new Date(timeNow * 1000).toISOString();
           try {
             timeString = new Date(timeNow * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-          } catch (e) { }
+          } catch (e) {}
 
           const htmlContent = `
             <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
@@ -312,7 +330,8 @@ const workerConfig: WorkerConfig = {
             subject: subject,
             html: htmlContent,
           };
-
+          console.log("Generated HTML content:", htmlContent);
+          
           const resp = await fetch('https://api.resend.com/emails', {
             method: 'POST',
             headers: {
@@ -324,29 +343,26 @@ const workerConfig: WorkerConfig = {
 
           if (!resp.ok) {
             console.error(`Resend API call failed: ${resp.status} ${await resp.text()}`);
+          } else {
+            // 发送成功后更新 KV（仅记录 DOWN 事件，也可记录 UP，但 UP 不会触发下一次的宽限期检查）
+            if (!isUp && env.ALERT_KV) {
+              const kvKey = `alert_${monitor.name}`;
+              await env.ALERT_KV.put(kvKey, JSON.stringify({
+                status: "DOWN",
+                time: Date.now()
+              }));
+            }
           }
-        } catch (e) {
-          console.error(`Error calling Resend API: ${e}`);
         }
+      } catch (e) {
+        console.error(`Error calling Resend API: ${e}`);
       }
-      
-      
-      // 这不会遵循宽限期设置，并且在状态变化时立即调用
-      // 如果您想实现宽限期，需要手动处理
-    },
-    onIncident: async (
-      env: any,
-      monitor: any,
-      timeIncidentStart: number,
-      timeNow: number,
-      reason: string
-    ) => {
-      // 如果任何监控有正在进行的事件，此回调将每分钟调用一次
-      // 在这里编写任何 Typescript 代码
-
-
-    },
+    }
   },
+  onIncident: async (env, monitor, timeIncidentStart, timeNow, reason) => {
+    // 如果你不需要这个回调，保持为空即可
+  },
+ },
 }
 
 // You can define multiple maintenances here
