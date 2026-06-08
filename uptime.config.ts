@@ -231,33 +231,33 @@ const workerConfig: WorkerConfig = {
   notification: {
     // [Optional] Notification webhook settings, if not specified, no notification will be sent
     // More info at Wiki: https://github.com/lyc8503/UptimeFlare/wiki/Setup-notification
-    // webhook: {
-    //   // [Required] webhook URL (example: Telegram Bot API)
-    //   url: 'https://api.resend.com/emails',
-    //   // [Optional] HTTP method, default to 'GET' for payloadType=param, 'POST' otherwise
-    //   method: 'POST',
-    //   // [Optional] headers to be sent
-    //   headers: {
-    //      'Authorization': 'Bearer ${env.RESEND_API_KEY}',
-    //      'Content-Type': 'application/json'
-    //   },
-    //   // [Required] Specify how to encode the payload
-    //   // Should be one of 'param', 'json' or 'x-www-form-urlencoded'
-    //   // 'param': append url-encoded payload to URL search parameters
-    //   // 'json': POST json payload as body, set content-type header to 'application/json'
-    //   // 'x-www-form-urlencoded': POST url-encoded payload as body, set content-type header to 'x-www-form-urlencoded'
-    //   payloadType: 'json',
-    //   // [Required] payload to be sent
-    //   // $MSG will be replaced with the human-readable notification message
-    //   payload: {
-    //     "from": "系统状态更新 <uptimeflare@031312.xyz>",
-    //     "to": ["yun0313wwh12@gmail.com"],
-    //     "subject": "UptimeFlare 状态更新",
-    //     "text": "$MSG"
-    //   },
-    //   // [Optional] timeout calling this webhook, in millisecond, default to 5000
-    //   timeout: 10000,
-    // },
+    webhook: {
+      // [Required] webhook URL (example: Telegram Bot API)
+      url: 'https://push.031312.xyz/api/push/y8Vo5RcCHRAI1wM8',
+      // [Optional] HTTP method, default to 'GET' for payloadType=param, 'POST' otherwise
+      method: 'POST',
+      // [Optional] headers to be sent
+      headers: {
+         // 'Authorization': 'Bearer ${env.RESEND_API_KEY}',
+         'Content-Type': 'application/json'
+      },
+      // [Required] Specify how to encode the payload
+      // Should be one of 'param', 'json' or 'x-www-form-urlencoded'
+      // 'param': append url-encoded payload to URL search parameters
+      // 'json': POST json payload as body, set content-type header to 'application/json'
+      // 'x-www-form-urlencoded': POST url-encoded payload as body, set content-type header to 'x-www-form-urlencoded'
+      payloadType: 'json',
+      // [Required] payload to be sent
+      // $MSG will be replaced with the human-readable notification message
+      payload: {
+        "from": "系统状态更新 <uptimeflare@031312.xyz>",
+        "to": ["yun0313wwh12@gmail.com"],
+        "subject": "UptimeFlare 状态更新",
+        "text": "$MSG"
+      },
+      // [Optional] timeout calling this webhook, in millisecond, default to 5000
+      timeout: 10000,
+    },
     // [Optional] timezone used in notification messages, default to "Etc/GMT"
     timeZone: 'Asia/Shanghai',
     // [Optional] grace period in minutes before sending a notification
@@ -275,89 +275,89 @@ const workerConfig: WorkerConfig = {
     reason: string
   ) => {
     // ========== 宽限期配置 ==========
-    const GRACE_PERIOD_MINUTES = 5;   // 5分钟内重复的 DOWN 不报警
-    // =================================
-
-    if (env.RESEND_API_KEY) {
-      try {
-        // ---------- 宽限期检查（仅对 DOWN 状态生效）----------
-        let skipSend = false;
-        if (!isUp && env.ALERT_KV) {   // 只有 DOWN 并且 KV 可用时才检查
-          const kvKey = `alert_${monitor.name}`;
-          let lastRecord = null;
-          try {
-            const raw = await env.ALERT_KV.get(kvKey);
-            if (raw) lastRecord = JSON.parse(raw);
-          } catch (e) {
-            console.error(`KV read error: ${e}`);
-          }
-
-          const lastStatus = lastRecord?.status;
-          const lastTime = lastRecord?.time || 0;
-          const minutesSinceLast = (Date.now() - lastTime) / 1000 / 60;
-
-          if (lastStatus === "DOWN" && minutesSinceLast < GRACE_PERIOD_MINUTES) {
-            console.log(`[Skip] ${monitor.name} DOWN alert suppressed (${minutesSinceLast.toFixed(1)} min since last alert)`);
-            skipSend = true;
-          }
-        }
-        // ----------------------------------------------------
-
-        if (!skipSend) {
-          const statusText = isUp ? '恢复正常 (UP)' : '服务中断 (DOWN)';
-          const color = isUp ? '#4ade80' : '#ef4444';
-          const subject = `[${statusText}] ${monitor.name} 状态变更通知`;
-
-          let timeString = new Date(timeNow * 1000).toISOString();
-          try {
-            timeString = new Date(timeNow * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-          } catch (e) {}
-
-          const htmlContent = `
-            <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
-              <h2 style="color: ${color};">${statusText}</h2>
-              <p><strong>监控名称:</strong> ${monitor.name}</p>
-              <p><strong>时间:</strong> ${timeString}</p>
-              <p><strong>原因:</strong> ${reason}</p>
-              <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
-              <p style="font-size: 12px; color: #888;">来自 UptimeFlare 监控报警</p>
-            </div>
-          `;
-
-          const resendPayload = {
-            from: "系统状态更新 <uptimeflare@031312.xyz>",
-            to: ["YUN-LOVE@031312.xyz"],
-            subject: subject,
-            html: htmlContent,
-          };
-          console.log("Generated HTML content:", htmlContent);
-          
-          const resp = await fetch('https://api.resend.com/emails', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${env.RESEND_API_KEY}`,
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(resendPayload)
-          });
-
-          if (!resp.ok) {
-            console.error(`Resend API call failed: ${resp.status} ${await resp.text()}`);
-          } else {
-            // 发送成功后更新 KV（仅记录 DOWN 事件，也可记录 UP，但 UP 不会触发下一次的宽限期检查）
-            if (!isUp && env.ALERT_KV) {
-              const kvKey = `alert_${monitor.name}`;
-              await env.ALERT_KV.put(kvKey, JSON.stringify({
-                status: "DOWN",
-                time: Date.now()
-              }));
-            }
-          }
-        }
-      } catch (e) {
-        console.error(`Error calling Resend API: ${e}`);
-      }
-    }
+    // const GRACE_PERIOD_MINUTES = 5;   // 5分钟内重复的 DOWN 不报警
+    // // =================================
+    //
+    // if (env.RESEND_API_KEY) {
+    //   try {
+    //     // ---------- 宽限期检查（仅对 DOWN 状态生效）----------
+    //     let skipSend = false;
+    //     if (!isUp && env.ALERT_KV) {   // 只有 DOWN 并且 KV 可用时才检查
+    //       const kvKey = `alert_${monitor.name}`;
+    //       let lastRecord = null;
+    //       try {
+    //         const raw = await env.ALERT_KV.get(kvKey);
+    //         if (raw) lastRecord = JSON.parse(raw);
+    //       } catch (e) {
+    //         console.error(`KV read error: ${e}`);
+    //       }
+    //
+    //       const lastStatus = lastRecord?.status;
+    //       const lastTime = lastRecord?.time || 0;
+    //       const minutesSinceLast = (Date.now() - lastTime) / 1000 / 60;
+    //
+    //       if (lastStatus === "DOWN" && minutesSinceLast < GRACE_PERIOD_MINUTES) {
+    //         console.log(`[Skip] ${monitor.name} DOWN alert suppressed (${minutesSinceLast.toFixed(1)} min since last alert)`);
+    //         skipSend = true;
+    //       }
+    //     }
+    //     // ----------------------------------------------------
+    //
+    //     if (!skipSend) {
+    //       const statusText = isUp ? '恢复正常 (UP)' : '服务中断 (DOWN)';
+    //       const color = isUp ? '#4ade80' : '#ef4444';
+    //       const subject = `[${statusText}] ${monitor.name} 状态变更通知`;
+    //
+    //       let timeString = new Date(timeNow * 1000).toISOString();
+    //       try {
+    //         timeString = new Date(timeNow * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    //       } catch (e) {}
+    //
+    //       const htmlContent = `
+    //         <div style="font-family: sans-serif; padding: 20px; border: 1px solid #eee; border-radius: 5px;">
+    //           <h2 style="color: ${color};">${statusText}</h2>
+    //           <p><strong>监控名称:</strong> ${monitor.name}</p>
+    //           <p><strong>时间:</strong> ${timeString}</p>
+    //           <p><strong>原因:</strong> ${reason}</p>
+    //           <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
+    //           <p style="font-size: 12px; color: #888;">来自 UptimeFlare 监控报警</p>
+    //         </div>
+    //       `;
+    //
+    //       const resendPayload = {
+    //         from: "系统状态更新 <uptimeflare@031312.xyz>",
+    //         to: ["YUN-LOVE@031312.xyz"],
+    //         subject: subject,
+    //         html: htmlContent,
+    //       };
+    //       console.log("Generated HTML content:", htmlContent);
+    //
+    //       const resp = await fetch('https://api.resend.com/emails', {
+    //         method: 'POST',
+    //         headers: {
+    //           'Authorization': `Bearer ${env.RESEND_API_KEY}`,
+    //           'Content-Type': 'application/json'
+    //         },
+    //         body: JSON.stringify(resendPayload)
+    //       });
+    //
+    //       if (!resp.ok) {
+    //         console.error(`Resend API call failed: ${resp.status} ${await resp.text()}`);
+    //       } else {
+    //         // 发送成功后更新 KV（仅记录 DOWN 事件，也可记录 UP，但 UP 不会触发下一次的宽限期检查）
+    //         if (!isUp && env.ALERT_KV) {
+    //           const kvKey = `alert_${monitor.name}`;
+    //           await env.ALERT_KV.put(kvKey, JSON.stringify({
+    //             status: "DOWN",
+    //             time: Date.now()
+    //           }));
+    //         }
+    //       }
+    //     }
+    //   } catch (e) {
+    //     console.error(`Error calling Resend API: ${e}`);
+    //   }
+    // }
   },
   onIncident: async (env, monitor, timeIncidentStart, timeNow, reason) => {
     // 如果你不需要这个回调，保持为空即可
