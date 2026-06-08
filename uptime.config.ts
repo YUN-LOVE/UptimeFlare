@@ -120,7 +120,7 @@ const workerConfig: WorkerConfig = {
       target: 'https://lg.031312.xyz:5225/',
       statusPageLink: 'https://lg.031312.xyz:5225/',
       hideLatencyChart: false,
-      expectedCodes: [200],
+      expectedCodes: [405],
       timeout: 10000,
     },
     // {
