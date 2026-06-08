@@ -6,9 +6,7 @@
 import { MaintenanceConfig, PageConfig, WorkerConfig } from './types/config'
 
 const pageConfig: PageConfig = {
-  // Title for your status page
   title: "YUN-LOVE 的状态页",
-  // Links shown at the header of your status page, could set `highlight` to `true`
   links: [
     { link: 'https://github.com/YUN-LOVE', label: 'GitHub' },
     { link: 'https://blog.031312.xyz/', label: '博客' },
@@ -16,7 +14,6 @@ const pageConfig: PageConfig = {
 }
 
 const workerConfig: WorkerConfig = {
-  // Define all your monitors here
   monitors: [
     {
       id: 'blog',
@@ -97,45 +94,41 @@ const workerConfig: WorkerConfig = {
     ) => {
       // ========== 1. 配置区 ==========
       const WEBHOOK_URL = env.WEBHOOK_URL || "https://push.031312.xyz/api/push/y8Vo5RcCHRAIiwM8";
-      const GRACE_PERIOD_MINUTES = 5;       // 宽限期（分钟），0 表示关闭
+      const GRACE_PERIOD_MINUTES = 5;
       const DEFAULT_TO = "YUN-LOVE@031312.xyz";
       const DEFAULT_FROM = "UptimeFlare 监控";
-      const MAX_TEXT_LENGTH = 5000;          // 防止 text 字段过长
-      // ================================
-
-      // 定义 kvKey（提升作用域）
+      const MAX_TEXT_LENGTH = 5000;
       let kvKey = "";
       
-      // ---------- 清洗函数：保留换行和制表符 ----------
+      // ---------- 强化清洗函数：删除所有控制字符，保留可见字符 ----------
       function sanitizeString(str: string): string {
         if (!str) return '';
-        // 删除 ASCII 控制字符，但保留 \n (0x0A), \r (0x0D), \t (0x09)
-        let cleaned = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
-        // 删除不可见 Unicode 字符（零宽连字、零宽空格等）
-        cleaned = cleaned.replace(/[\u200B-\u200D\uFEFF]/g, '');
-        // HTML 转义（防止注入）
+        // 1. 删除 ASCII 控制字符（0x00-0x1F, 0x7F），替换为空格
+        let cleaned = str.replace(/[\x00-\x1F\x7F]/g, ' ');
+        // 2. 删除 Unicode 控制字符（包括零宽字符、方向控制、行分隔符等）
+        cleaned = cleaned.replace(/[\p{C}]/gu, ' ');
+        // 3. 合并连续空白（包括多个空格、换行、制表等）为一个空格
+        cleaned = cleaned.replace(/\s+/g, ' ');
+        // 4. HTML 转义（防止注入）
         cleaned = cleaned.replace(/[&<>]/g, (m) => {
           if (m === '&') return '&amp;';
           if (m === '<') return '&lt;';
           if (m === '>') return '&gt;';
           return m;
         });
-        return cleaned;
+        return cleaned.trim();
       }
       // ------------------------------
 
-      // 清洗字段
       const safeMonitorName = sanitizeString(monitor.name);
       const safeReason = sanitizeString(reason);
       const statusText = isUp ? '✅ 恢复正常 (UP)' : '❌ 服务中断 (DOWN)';
-
-      // 时间处理（东八区）
       const timeString = new Date(timeNow * 1000).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
-      // ---------- 宽限期检查（仅对 DOWN 生效，需要 KV 绑定）----------
+      // 宽限期检查（仅对 DOWN 生效）
       let shouldSkip = false;
       if (!isUp && GRACE_PERIOD_MINUTES > 0 && env.ALERT_KV) {
-        kvKey = `webhook_alert_${monitor.id}`;  // 使用 monitor.id 更可靠
+        kvKey = `webhook_alert_${monitor.id}`;
         let lastRecord = null;
         try {
           const raw = await env.ALERT_KV.get(kvKey);
@@ -151,11 +144,8 @@ const workerConfig: WorkerConfig = {
         }
       }
       if (shouldSkip) return;
-      // ------------------------------------------------------------
 
-      // ---------- 构造 Webhook 请求体 ----------
-      let detailText = `监控名称: ${safeMonitorName}\n时间: ${timeString}\n原因: ${safeReason}`;
-      // 可选：截断过长文本
+      let detailText = `监控名称: ${safeMonitorName} 时间: ${timeString} 原因: ${safeReason}`;
       if (detailText.length > MAX_TEXT_LENGTH) {
         detailText = detailText.substring(0, MAX_TEXT_LENGTH) + '…(内容过长已截断)';
       }
@@ -169,7 +159,6 @@ const workerConfig: WorkerConfig = {
 
       console.log("发送 Webhook payload:", JSON.stringify(payload, null, 2));
 
-      // ---------- 发送 Webhook ----------
       try {
         const resp = await fetch(WEBHOOK_URL, {
           method: 'POST',
@@ -182,7 +171,6 @@ const workerConfig: WorkerConfig = {
           console.error(`Webhook 发送失败 (${resp.status}): ${errText}`);
         } else {
           console.log(`Webhook 发送成功: ${monitor.name} -> ${statusText}`);
-          // 发送成功后记录宽限期（仅 DOWN）
           if (!isUp && GRACE_PERIOD_MINUTES > 0 && env.ALERT_KV) {
             await env.ALERT_KV.put(kvKey, JSON.stringify({
               status: 'DOWN',
@@ -195,7 +183,7 @@ const workerConfig: WorkerConfig = {
       }
     },
     onIncident: async (env, monitor, timeIncidentStart, timeNow, reason) => {
-      // 如果你不需要这个回调，保持为空即可
+      // 空实现
     },
   },
 }
