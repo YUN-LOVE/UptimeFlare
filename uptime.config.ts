@@ -116,7 +116,7 @@ const workerConfig: WorkerConfig = {
     {
       id: 'OpenList',
       name: 'OpenList（lg）',
-      method: 'GET',
+      method: 'HEAD',
       target: 'https://lg.031312.xyz:5225/',
       statusPageLink: 'https://lg.031312.xyz:5225/',
       hideLatencyChart: false,
@@ -212,10 +212,13 @@ const workerConfig: WorkerConfig = {
     },
     {
       id: 'lg_matrix',
-      name: 'lg matrix',
-      method: 'TCP_PING',
-      target: 'lg.031312.xyz:4224',
-      timeout: 5000,
+      name: 'matrix服务器',
+      method: 'HEAD',
+      target: 'https://lg.031312.xyz:4224/',
+      statusPageLink: 'https://lg.031312.xyz:4224/',
+      hideLatencyChart: false,
+      expectedCodes: [200],
+      timeout: 10000,
     },
     {
       id: 'lg_ssh',
@@ -279,7 +282,7 @@ const workerConfig: WorkerConfig = {
       
       // 调用 Resend API 发送邮件通知 (高级 HTML 格式)
       // 务必在 Cloudflare Worker 的设置 -> 变量中配置: RESEND_API_KEY
-      /* 
+       
       if (env.RESEND_API_KEY) {
         try {
           const statusText = isUp ? '恢复正常 (UP)' : '服务中断 (DOWN)';
@@ -326,7 +329,7 @@ const workerConfig: WorkerConfig = {
           console.error(`Error calling Resend API: ${e}`);
         }
       }
-      */
+      
       
       // 这不会遵循宽限期设置，并且在状态变化时立即调用
       // 如果您想实现宽限期，需要手动处理
