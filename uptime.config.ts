@@ -204,6 +204,13 @@ const workerConfig: WorkerConfig = {
     //   timeout: 10000,
     // },
     {
+      id: 'lg_matrix_livekit',
+      name: 'lg matrix livekit',
+      method: 'TCP_PING',
+      target: 'lg.031312.xyz:7881',
+      timeout: 5000,
+    },
+    {
       id: 'lg_matrix',
       name: 'lg matrix',
       method: 'TCP_PING',
